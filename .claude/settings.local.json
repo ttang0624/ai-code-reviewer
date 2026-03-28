@@ -3,7 +3,9 @@
     "allow": [
       "Bash(git remote:*)",
       "Bash(git push:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git:*)",
+      "Bash(pip3 install:*)"
     ]
   }
 }
