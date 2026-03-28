@@ -1,0 +1,18 @@
+# Environment variables — contains secrets, never commit
+.env
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Pytest cache
+.pytest_cache/
+
+# Editor directories
+.vscode/
+.idea/
