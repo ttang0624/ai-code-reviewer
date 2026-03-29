@@ -27,7 +27,7 @@ router = APIRouter()
 @router.post("/webhook")
 async def handle_webhook(
     # Request gives us access to the raw HTTP request — headers, body bytes, etc.
-    request: Request,
+    request: Request, #this specifies the type of the request parameter, which is an instance of FastAPI's Request class. This allows us to access the raw HTTP request data, including headers and body.
     # Header(...) tells FastAPI to extract the X-Hub-Signature-256 header from the incoming request.
     # GitHub sends this header on every webhook call; it contains the HMAC signature of the body.
     # The alias maps the Python variable name to the actual HTTP header name (hyphens → underscores).
@@ -36,14 +36,10 @@ async def handle_webhook(
 ):
     # Read the raw request body as bytes. We need raw bytes (not parsed JSON) to recompute the HMAC.
     # HMAC is computed over the exact bytes GitHub sent — parsing first would change whitespace/ordering.
+    if x_hub_signature_256 is None:
+        raise HTTPException(status_code=401, detail="Missing signature header")
     raw_body = await request.body()
 
-    # If GitHub did not include the signature header at all, reject immediately.
-    # No signature means we have no way to verify the request is authentic.
-    if x_hub_signature_256 is None:
-        # HTTPException with status 401 tells the caller they are not authorized.
-        # detail is the message included in the JSON response body.
-        raise HTTPException(status_code=401, detail="Missing signature header")
 
     # Encode the secret as bytes; hmac.new() requires bytes, not a plain string.
     # The secret must be exactly the same string both GitHub and we configured — any mismatch fails.
@@ -83,6 +79,13 @@ async def handle_webhook(
 
     # Return a 200 with the extracted data so we can confirm parsing is correct during development.
     # In a later step this is where we'll call the reviewer service instead.
+
+    if pr_number is None or repo_name is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Malformed pull_request payload"
+        )
+    
     return {
         "status": "received",
         "pr_number": pr_number,
