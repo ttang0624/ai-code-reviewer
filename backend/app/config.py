@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # GITHUB_WEBHOOK_SECRET is the shared secret we'll use to verify payloads truly came from GitHub.
     GITHUB_WEBHOOK_SECRET: str
 
+    # GITHUB_TOKEN is a Personal Access Token (or GitHub App token) that authenticates our outbound
+    # requests to the GitHub REST API — e.g. fetching PR diffs and posting review comments.
+    GITHUB_TOKEN: str
+
     # ANTHROPIC_API_KEY is the credential that lets us call the Claude API.
     ANTHROPIC_API_KEY: str
 
