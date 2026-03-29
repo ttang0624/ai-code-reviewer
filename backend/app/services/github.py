@@ -38,7 +38,7 @@ async def get_pr_files(repo_name: str, pr_number: int) -> str:
 
     # `async with` creates an httpx client and guarantees it is closed when the block exits,
     # even if an exception is raised. This prevents connection leaks.
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient() as client: #async with as is a context manager that ensures proper cleanup of the client resources after the block is executed, even if an error occurs within the block.
         # `await` pauses this function until GitHub responds, without blocking the server.
         # client.get() sends an HTTP GET request to the URL with the headers above.
         response = await client.get(url, headers=headers)
