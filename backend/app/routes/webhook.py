@@ -18,6 +18,13 @@ from typing import Optional
 # We import the shared settings object so we can read GITHUB_WEBHOOK_SECRET without hardcoding it.
 from app.config import settings
 
+# get_pr_files fetches the unified diff for all changed files in a pull request.
+# post_review_comment posts a string as a comment on the PR.
+from app.services.github import get_pr_files, post_review_comment
+
+# review_code sends a diff to Claude and returns the review as a plain string.
+from app.services.reviewer import review_code
+
 # Creates the router instance. main.py calls app.include_router(router) to activate these routes.
 router = APIRouter()
 
@@ -77,17 +84,37 @@ async def handle_webhook(
     # The repository's full name (e.g. "owner/repo") lives at payload["repository"]["full_name"].
     repo_name = payload.get("repository", {}).get("full_name")
 
-    # Return a 200 with the extracted data so we can confirm parsing is correct during development.
-    # In a later step this is where we'll call the reviewer service instead.
-
     if pr_number is None or repo_name is None:
         raise HTTPException(
             status_code=400,
             detail="Malformed pull_request payload"
         )
-    
+
+    # Step 1: fetch the diff from GitHub.
+    # get_pr_files returns a formatted string of all changed files and their patches.
+    # We await it because it makes a network request to the GitHub API.
+    diff = await get_pr_files(repo_name, pr_number)
+
+    if not diff:
+        return {
+            "status": "skipped",
+            "reason": "PR contains no reviewable code changes"
+        }
+
+    # Step 2: send the diff to Claude for review.
+    # review_code returns the review as a plain string of markdown-formatted feedback.
+    # We await it because it makes a network request to the Anthropic API.
+    review = await review_code(diff, repo_name, pr_number)
+
+    # Step 3: post the review back to GitHub as a PR comment.
+    # post_review_comment returns None on success; it raises an HTTPException on failure.
+    # We await it because it makes a network request to the GitHub API.
+    await post_review_comment(repo_name, pr_number, review)
+
+    # Return a 200 confirming that all three steps completed successfully.
+    # GitHub checks for a 2xx response to mark the webhook delivery as successful.
     return {
-        "status": "received",
+        "status": "review posted",
         "pr_number": pr_number,
         "repo": repo_name,
     }

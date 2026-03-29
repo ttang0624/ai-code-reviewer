@@ -79,3 +79,42 @@ async def get_pr_files(repo_name: str, pr_number: int) -> str:
     # Join all file blocks with a blank line between them for readability.
     # This single string is what we'll pass to the Claude API as the code to review.
     return "\n\n".join(diff_parts)
+
+
+# This function posts a finished review string as a comment on the pull request.
+# It is async for the same reason as get_pr_files — we don't want to block the event loop
+# while waiting for GitHub to accept our POST request.
+async def post_review_comment(repo_name: str, pr_number: int, review: str) -> None:
+    # GitHub's REST API treats pull requests as a special kind of issue.
+    # Comments on a PR are therefore created via the Issues comments endpoint, not the Pulls endpoint.
+    # The URL shape is: POST /repos/{owner}/{repo}/issues/{issue_number}/comments
+    url = f"https://api.github.com/repos/{repo_name}/issues/{pr_number}/comments"
+
+    # Reuse the same auth headers as get_pr_files — every GitHub API request needs these.
+    headers = {
+        # Bearer token identifies us to GitHub and determines which repos we can access.
+        "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
+        # Tells GitHub we want the current recommended JSON response format.
+        "Accept": "application/vnd.github+json",
+        # Pins the API version so GitHub changes don't silently alter our request/response shape.
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    # The request body for creating a comment is a JSON object with a single "body" field.
+    # httpx will serialize this dict to JSON and set Content-Type automatically.
+    body = {"body": review}
+
+    # Open a client, send the POST, then close the client when the block exits.
+    async with httpx.AsyncClient() as client:
+        # client.post() sends an HTTP POST — we pass `json=body` so httpx encodes it as JSON.
+        # `await` pauses here until GitHub responds, without blocking other requests.
+        response = await client.post(url, headers=headers, json=body)
+
+    # A successful comment creation returns 201 Created, not 200 OK.
+    # Any other status means the comment was not posted and we should surface the error.
+    if response.status_code != 201:
+        # Forward GitHub's status code and raw response body so the error is diagnosable.
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=f"GitHub API error posting review comment: {response.text}",
+        )
