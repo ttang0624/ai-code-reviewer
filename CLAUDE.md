@@ -6,30 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 An AI-powered code review tool that receives GitHub pull request webhooks, analyzes code changes using the Claude API, and posts context-aware review comments back to GitHub automatically.
 
-**Stack:** Python + FastAPI (backend), PostgreSQL (database), GitHub Webhooks + GitHub API (integration), Anthropic Claude API (AI), React (dashboard frontend).
+**Stack:** Python + FastAPI (backend), SQLite locally / PostgreSQL in production, GitHub Webhooks + GitHub API, Anthropic Claude API, minimal server-rendered dashboard.
 
 ## Build Status
 
-- [ ] Environment setup
-- [ ] Project scaffold
-- [ ] GitHub webhook receiver
-- [ ] LLM integration
-- [ ] Database setup
-- [ ] Dashboard frontend
+- [x] Environment setup
+- [x] Project scaffold
+- [x] GitHub webhook receiver
+- [x] LLM integration
+- [x] Database setup
+- [x] Minimal dashboard
 - [ ] Deployment
 
 ## Commands
 
-<!-- Fill in as the project is built. Expected shape:
-- Run server: `uvicorn main:app --reload`
-- Run tests: `pytest` or `pytest tests/test_foo.py`
-- Lint: `ruff check .` or `flake8`
-- Install deps: `pip install -r requirements.txt`
--->
+- Install deps: `cd backend && pip install -r requirements.txt`
+- Run server: `cd backend && uvicorn app.main:app --reload`
+- Run tests: `cd backend && pytest`
 
 ## Architecture
 
-<!-- Fill in as the project is built. -->
+GitHub sends signed pull request webhooks to `/webhook`. The route verifies the HMAC signature, deduplicates delivery IDs, filters non-reviewable PR actions, fetches changed file patches via the GitHub API, asks Claude for a review when configured, posts the review as a PR comment, and stores a `ReviewRun` row for dashboard/history inspection.
+
+If `ANTHROPIC_API_KEY` is absent and `DRY_RUN_WITHOUT_AI=true`, the service uses a deterministic local heuristic reviewer so the full app can be tested without paid API calls.
 
 ## Working with this User
 

@@ -1,6 +1,30 @@
-# Sets up the database connection and session factory.
-# All database sessions used elsewhere in the app originate here.
+from collections.abc import Generator
 
-# TODO: create SQLAlchemy engine from settings.database_url
-# TODO: create SessionLocal factory
-# TODO: define get_db() dependency for FastAPI route injection
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+from app.config import settings
+
+
+connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+
+engine = create_engine(settings.database_url, connect_args=connect_args, future=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def init_db() -> None:
+    from app.database import models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

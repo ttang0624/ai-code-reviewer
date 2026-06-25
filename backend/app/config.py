@@ -1,33 +1,37 @@
-# pydantic-settings is a library that reads environment variables and validates their types.
-# BaseSettings is the base class we inherit from to get that behaviour.
-from pydantic_settings import BaseSettings
+from functools import lru_cache
 
-# We define a class that inherits from BaseSettings.
-# Each attribute on the class becomes a required environment variable.
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables or backend/.env."""
 
-    # SECRET_KEY is used to sign tokens or other data so we can verify it wasn't tampered with.
-    SECRET_KEY: str
+    app_name: str = "AI Code Reviewer"
+    environment: str = "development"
+    secret_key: str = "dev-only-change-me"
 
-    # GITHUB_WEBHOOK_SECRET is the shared secret we'll use to verify payloads truly came from GitHub.
-    GITHUB_WEBHOOK_SECRET: str
+    github_webhook_secret: str = "dev-webhook-secret"
+    github_token: str | None = None
 
-    # GITHUB_TOKEN is a Personal Access Token (or GitHub App token) that authenticates our outbound
-    # requests to the GitHub REST API — e.g. fetching PR diffs and posting review comments.
-    GITHUB_TOKEN: str
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+    max_diff_chars: int = Field(default=60_000, ge=1_000, le=200_000)
 
-    # ANTHROPIC_API_KEY is the credential that lets us call the Claude API.
-    ANTHROPIC_API_KEY: str
+    database_url: str = "sqlite:///./ai_code_reviewer.db"
+    dry_run_without_ai: bool = True
 
-    # DATABASE_URL is the full connection string for PostgreSQL, e.g. postgresql://user:pass@host/db
-    DATABASE_URL: str
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
 
-    # The nested Config class tells pydantic-settings *where* to look for these variables.
-    class Config:
-        # env_file tells pydantic-settings to also read from a .env file in the working directory.
-        # Variables set in the real environment always take precedence over the .env file.
-        env_file = ".env"
 
-# This creates one shared instance of Settings when the module is first imported.
-# Every other file imports this `settings` object instead of reading env vars directly.
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

@@ -13,6 +13,11 @@ venv/
 # Pytest cache
 .pytest_cache/
 
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
 # Editor directories
 .vscode/
 .idea/
